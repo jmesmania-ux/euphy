@@ -60,11 +60,17 @@
       <!-- 📢 Updates Tab -->
       <div id="updates" class="tab-content">
         <div class="post-update-form">
-          <h3>Post New Update / Announcement</h3>
-          <textarea id="update-text" placeholder="Type what's new..."></textarea>
+          <h3>Post New Update / Latest / Sale</h3>
+          <textarea id="update-text" placeholder="Type your message here..."></textarea>
+          <input type="file" id="update-image" accept="image/*">
           <button id="post-update-btn">Post Update</button>
         </div>
-        <div id="updates-list"></div>
+
+        <div class="carousel-container">
+          <button class="carousel-arrow left" onclick="moveCarousel(-1)">&#10094;</button>
+          <div class="carousel-wrapper" id="carousel-wrapper"></div>
+          <button class="carousel-arrow right" onclick="moveCarousel(1)">&#10095;</button>
+        </div>
       </div>
     </div>
 
@@ -80,7 +86,6 @@
         </div>
       </div>
     </div>
-
   </div>
   <script src="script.js"></script>
 </body>

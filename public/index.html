@@ -11,12 +11,16 @@
   <div class="container">
     <h1>🛒 Mag-order na Dito!</h1>
 
+    <!-- Shop Status Banner -->
+    <div id="shop-status" class="status-banner"></div>
+
     <!-- Menu Tabs -->
     <div class="tabs">
       <button class="tab-btn active" data-tab="signatures">Signatures</button>
       <button class="tab-btn" data-tab="flavored">Flavored</button>
       <button class="tab-btn" data-tab="thee">The E</button>
       <button class="tab-btn" data-tab="addons">Add Ons</button>
+      <button class="tab-btn" data-tab="chat">Message Admin</button>
     </div>
 
     <!-- Product Lists -->
@@ -24,6 +28,15 @@
     <div id="flavored" class="tab-content"></div>
     <div id="thee" class="tab-content"></div>
     <div id="addons" class="tab-content"></div>
+
+    <!-- Chat Section -->
+    <div id="chat" class="tab-content">
+      <div id="chat-messages" class="chat-box"></div>
+      <div class="chat-input">
+        <input type="text" id="message-text" placeholder="I-type ang mensahe mo...">
+        <button id="send-msg-btn">Ipadala</button>
+      </div>
+    </div>
 
     <!-- Cart -->
     <div class="cart">

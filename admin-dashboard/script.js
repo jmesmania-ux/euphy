@@ -1,6 +1,8 @@
 const API_BASE = '';
 let ADMIN_PASS = '';
 let activeCustomerId = null;
+let carouselPosition = 0;
+const itemWidth = 300;
 
 // Screen Switch
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -105,31 +107,67 @@ function removeProd(id) {
   fetch(`${API_BASE}/api/admin/remove-product`, {method:'POST',headers:{'Content-Type':'application/json','x-admin-password': ADMIN_PASS},body:JSON.stringify({id})}).then(()=>loadProducts());
 }
 
-// -- UPDATES --
+// -- UPDATES & CAROUSEL --
 document.getElementById('post-update-btn').onclick = () => {
   const text = document.getElementById('update-text').value;
-  fetch(`${API_BASE}/api/admin/post-update`, {method:'POST',headers:{'Content-Type':'application/json','x-admin-password': ADMIN_PASS},body:JSON.stringify({text})}).then(()=>{document.getElementById('update-text').value='';loadUpdates();});
+  const imageInput = document.getElementById('update-image');
+  const formData = new FormData();
+  
+  formData.append('text', text);
+  if (imageInput.files[0]) formData.append('image', imageInput.files[0]);
+
+  fetch(`${API_BASE}/api/admin/post-update`, {
+    method:'POST',
+    headers:{'x-admin-password': ADMIN_PASS},
+    body: formData
+  }).then(() => {
+    document.getElementById('update-text').value = '';
+    document.getElementById('update-image').value = '';
+    loadUpdates();
+  });
 };
+
 function loadUpdates() {
   fetch(`${API_BASE}/api/admin/announcements`, {headers:{'x-admin-password': ADMIN_PASS}})
   .then(r => r.json()).then(ups => {
-    const list = document.getElementById('updates-list'); list.innerHTML = '';
+    const wrapper = document.getElementById('carousel-wrapper');
+    wrapper.innerHTML = '';
+    carouselPosition = 0;
+
     ups.forEach(u => {
-      const div = document.createElement('div'); div.className = 'update-card';
-      div.innerHTML = `<p>${u.active ? '✅' : '❌'} ${u.text}</p><small>${new Date(u.createdAt).toLocaleString()}</small>`;
-      list.appendChild(div);
+      const div = document.createElement('div');
+      div.className = 'carousel-item';
+      div.innerHTML = `
+        ${u.imageUrl ? `<img src="${u.imageUrl}" alt="Update image">` : ''}
+        <div class="carousel-item-text">
+          <p>${u.text}</p>
+          <small style="color:#888">${new Date(u.createdAt).toLocaleString()}</small>
+        </div>
+      `;
+      wrapper.appendChild(div);
     });
   });
 }
+function moveCarousel(direction) {
+  const wrapper = document.getElementById('carousel-wrapper');
+  const maxPosition = -(wrapper.children.length - 1) * itemWidth;
+  carouselPosition += direction * itemWidth;
+  if (carouselPosition > 0) carouselPosition = 0;
+  if (carouselPosition < maxPosition) carouselPosition = maxPosition;
+  wrapper.style.transform = `translateX(${carouselPosition}px)`;
+}
 
-// -- CHAT --
+// -- CHAT SYSTEM --
 const modal = document.getElementById('chat-modal');
 document.querySelector('.close').onclick = () => modal.style.display = 'none';
 document.getElementById('send-chat-btn').onclick = () => {
   const txt = document.getElementById('chat-text').value;
   if(!txt || !activeCustomerId) return;
-  fetch(`${API_BASE}/api/admin/send-chat`, {method:'POST',headers:{'Content-Type':'application/json','x-admin-password': ADMIN_PASS},body:JSON.stringify({customerId:activeCustomerId,text:txt})})
-  .then(()=>{document.getElementById('chat-text').value='';loadChatHistory();});
+  fetch(`${API_BASE}/api/admin/send-chat`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-password': ADMIN_PASS},
+    body:JSON.stringify({customerId:activeCustomerId,text:txt})
+  }).then(()=>{document.getElementById('chat-text').value='';loadChatHistory();});
 };
 function openChat(cid, name) {
   activeCustomerId = cid;

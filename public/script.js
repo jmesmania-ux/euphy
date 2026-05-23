@@ -5,7 +5,6 @@ let productsData = {};
 let cart = [];
 let shopOpen = true;
 
-// User data
 const user = tg.initDataUnsafe.user || {};
 const userData = {
   telegramId: user.id || 'N/A',
@@ -13,21 +12,26 @@ const userData = {
   telegramUsername: user.username || 'N/A'
 };
 
-// Load shop status first
+// Load announcement
+fetch('/announcement')
+  .then(res => res.json())
+  .then(ann => {
+    if (ann.active && ann.text) {
+      const el = document.getElementById('announcement');
+      el.textContent = `📢 ${ann.text}`;
+      el.style.display = 'block';
+    }
+  });
+
+// Load shop status
 fetch('/shop-status')
   .then(res => res.json())
-  .then(data => {
-    shopOpen = data.isOpen;
-    updateShopBanner();
-  });
+  .then(data => { shopOpen = data.isOpen; updateShopBanner(); });
 
 // Load products
 fetch('/products')
   .then(res => res.json())
-  .then(data => {
-    productsData = data;
-    renderProducts();
-  });
+  .then(data => { productsData = data; renderProducts(); });
 
 function updateShopBanner() {
   const banner = document.getElementById('shop-status');
@@ -52,7 +56,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// Render products
 function renderProducts() {
   const sigEl = document.getElementById('signatures');
   productsData.Signatures.forEach(p => sigEl.appendChild(createProductEl(p)));
@@ -64,22 +67,26 @@ function renderProducts() {
   productsData.TheE.forEach(p => theeEl.appendChild(createProductEl(p)));
 
   const addEl = document.getElementById('addons');
-  Object.values(productsData.AddOns).forEach(g => g.forEach(p => addEl.appendChild(createProductEl(p))));
+  [...productsData.AddOns.Essentials, ...productsData.AddOns.Miscellaneous, ...productsData.AddOns.Pops]
+    .forEach(p => addEl.appendChild(createProductEl(p)));
 }
 
 function createProductEl(product) {
   const div = document.createElement('div');
-  div.className = 'product';
+  div.className = `product ${product.available ? '' : 'unavailable'}`;
   div.innerHTML = `
     <h4>${product.name}</h4>
     <p>${product.description}</p>
     <p class="price">₱${product.price}</p>
     <div class="qty-controls">
-      <button class="qty-btn minus">-</button>
+      <button class="qty-btn minus" ${!product.available ? 'disabled' : ''}>-</button>
       <span class="qty">0</span>
-      <button class="qty-btn plus">+</button>
+      <button class="qty-btn plus" ${!product.available ? 'disabled' : ''}>+</button>
     </div>
   `;
+
+  if (!product.available) return div;
+
   let qty = 0;
   const qtyEl = div.querySelector('.qty');
   div.querySelector('.plus').addEventListener('click', () => { qty++; qtyEl.textContent = qty; updateCart(product, qty); });
@@ -130,7 +137,7 @@ document.getElementById('submit-order').addEventListener('click', async () => {
   }
 });
 
-// Send message to admin
+// Send message
 document.getElementById('send-msg-btn').addEventListener('click', async () => {
   const text = document.getElementById('message-text').value.trim();
   if (!text) return;
@@ -141,7 +148,6 @@ document.getElementById('send-msg-btn').addEventListener('click', async () => {
     body: JSON.stringify({ senderId: userData.telegramId, senderName: userData.telegramName, text })
   });
 
-  // Show in chat
   const msgEl = document.createElement('div');
   msgEl.className = 'chat-msg msg-to-admin';
   msgEl.textContent = text;

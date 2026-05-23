@@ -21,16 +21,20 @@ const PORT = process.env.PORT || 3000;
 // --------------------------
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));          // Customer App
-app.use('/admin', express.static('admin-dashboard')); // Admin Dashboard
+
+// Serve Customer Website
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ✅ SERVE ADMIN DASHBOARD (SEPARATE WEBSITE)
+app.use('/admin', express.static(path.join(__dirname, 'admin-dashboard')));
 
 // 🖼️ IMAGE UPLOAD CONFIG
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'public/uploads/')
+    cb(null, path.join(__dirname, 'public', 'uploads'));
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname))
+    cb(null, Date.now() + path.extname(file.originalname));
   }
 });
 const upload = multer({
@@ -44,7 +48,9 @@ const upload = multer({
     else cb('Error: Only images allowed!');
   }
 });
-app.use('/uploads', express.static('public/uploads'));
+
+// Make uploaded images accessible via URL
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 // --------------------------
 // 🛢️ DATABASE CONNECTION
@@ -55,8 +61,9 @@ mongoose.connect(process.env.MONGO_URI, {
 })
 .then(async () => {
   console.log('✅ DB Connected');
-  // Initialize Defaults
+  // Initialize Default Shop Status
   if (!(await ShopStatus.findOne())) await new ShopStatus({ isOpen: true }).save();
+  // Initialize Default Products (only if empty)
   if (!(await Product.findOne())) {
     await Product.insertMany([
       { id: 'U10', name: 'U10', description: 'Sobrang sarap na signature drink!', price: 100, category: 'Signatures', available: true },
@@ -88,7 +95,7 @@ mongoose.connect(process.env.MONGO_URI, {
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
 const ADMIN_ID = process.env.ADMIN_CHAT_ID;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
-const ADMIN_PASS = process.env.ADMIN_PASSWORD;
+const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'admin123';
 
 bot.setWebHook(`${WEBHOOK_URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`)
   .then(() => console.log(`✅ Webhook: ${WEBHOOK_URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`))
@@ -191,9 +198,6 @@ app.get('/api/admin/announcements', adminAuth, async (req, res) => {
 app.post('/api/admin/post-update', adminAuth, upload.single('image'), async (req, res) => {
   const { text } = req.body;
   const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-  
-  // Optional: Keep history or deactivate old ones. We keep history for carousel.
-  // await Announcement.updateMany({}, { active: false });
   
   const a = new Announcement({ text, imageUrl, active: true });
   await a.save();

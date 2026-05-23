@@ -1,0 +1,35 @@
+* {margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI, Roboto, sans-serif;}
+body {background:#f1f5f9;padding:20px;}
+.container {max-width:1000px;margin:0 auto;}
+
+header {display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;background:white;padding:15px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);}
+.shop-status {display:flex;gap:10px;align-items:center;}
+#status-text {font-weight:bold;}
+.status-open {color:green;}
+.status-closed {color:red;}
+
+.screen {display:none;}
+.screen.active {display:block;}
+
+input, textarea, select {width:100%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:4px;}
+button {padding:10px 15px;background:#2b6cb0;color:white;border:none;border-radius:4px;cursor:pointer;}
+button:hover {background:#2c5282;}
+
+.tabs {display:flex;gap:5px;margin-bottom:15px;}
+.tab-btn {background:#e2e8f0;color:#333;}
+.tab-btn.active {background:#2b6cb0;color:white;}
+.tab-content {display:none;background:white;padding:15px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);}
+.tab-content.active {display:block;}
+
+.order-card, .product-card, .update-card {border:1px solid #eee;padding:12px;margin:8px 0;border-radius:6px;}
+.order-actions {display:flex;gap:8px;margin-top:8px;}
+.btn-approve {background:#2f855a;}
+.btn-decline {background:#c53030;}
+.btn-chat {background:#805ad5;}
+
+.modal {display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);}
+.modal-content {background:white;margin:5% auto;padding:20px;width:90%;max-width:500px;border-radius:8px;}
+.close {float:right;font-size:24px;cursor:pointer;}
+.chat-box {height:300px;overflow-y:auto;border:1px solid #ddd;padding:10px;margin:10px 0;border-radius:4px;}
+.msg-admin {text-align:right;background:#2b6cb0;color:white;padding:6px 10px;border-radius:12px;margin:4px 0 4px auto;max-width:80%;}
+.msg-customer {text-align:left;background:#e2e8f0;padding:6px 10px;border-radius:12px;margin:4px 0;max-width:80%;}

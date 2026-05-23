@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const TelegramBot = require('node-telegram-bot-api');
 const Order = require('./models/Order');
+const Message = require('./models/Message');
+const ShopStatus = require('./models/ShopStatus');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,12 +20,39 @@ mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => console.log('✅ Database connected'))
+.then(async () => {
+  console.log('✅ Database connected');
+  const exists = await ShopStatus.findOne();
+  if (!exists) await new ShopStatus({ isOpen: true }).save();
+})
 .catch(err => console.error('❌ DB Error:', err));
 
-// Telegram Bot Setup
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
+// --- TELEGRAM BOT SETUP (WEBHOOK MODE) ---
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
 const ADMIN_ID = process.env.ADMIN_CHAT_ID;
+const WEBHOOK_URL = process.env.WEBHOOK_URL;
+
+// Set Webhook on start
+bot.setWebHook(`${WEBHOOK_URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+  .then(() => console.log(`✅ Webhook set to: ${WEBHOOK_URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`))
+  .catch(err => console.error('❌ Webhook error:', err));
+
+// Webhook route — Telegram sends updates here
+app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
+
+// --- TYPING INDICATOR HELPER ---
+async function sendWithTyping(chatId, text, options = {}) {
+  try {
+    await bot.sendChatAction(chatId, 'typing');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return bot.sendMessage(chatId, text, options);
+  } catch (err) {
+    console.error('❌ Send error:', err.message);
+  }
+}
 
 // --- PRODUCT CATALOG ---
 const products = {
@@ -62,27 +91,32 @@ const products = {
 };
 
 // --- API ROUTES ---
-app.get('/products', (req, res) => {
-  res.json(products);
+app.get('/products', (req, res) => res.json(products));
+
+app.get('/shop-status', async (req, res) => {
+  const status = await ShopStatus.findOne();
+  res.json({ isOpen: status.isOpen });
 });
 
-// Save new order
+app.post('/toggle-shop', async (req, res) => {
+  const status = await ShopStatus.findOne();
+  status.isOpen = !status.isOpen;
+  await status.save();
+  res.json({ success: true, isOpen: status.isOpen });
+  sendWithTyping(ADMIN_ID, `🔄 Shop is now ${status.isOpen ? 'OPEN ✅' : 'CLOSED ❌'}`);
+});
+
 app.post('/submit-order', async (req, res) => {
   try {
     const { telegramId, telegramName, telegramUsername, items, total } = req.body;
-    
-    const newOrder = new Order({
-      telegramId,
-      telegramName,
-      telegramUsername,
-      items,
-      totalAmount: total,
-      status: 'pending'
-    });
+    const shopStatus = await ShopStatus.findOne();
+    if (!shopStatus.isOpen) {
+      return res.json({ success: false, message: '❌ Pasensya na, CLOSED po muna kami ngayon. Subukan ulit mamaya!' });
+    }
 
+    const newOrder = new Order({ telegramId, telegramName, telegramUsername, items, totalAmount: total });
     await newOrder.save();
 
-    // Send to Admin with buttons
     const orderText = `📥 *Bagong Order Natanggap!*\n\n👤 Pangalan: ${telegramName}\n🆔 ID: ${telegramId}\n📛 Username: @${telegramUsername}\n🛒 Items: ${items.map(i => `${i.name} x${i.qty}`).join(', ')}\n💵 Total: ₱${total}\n\n✅ I-approve o ❌ I-deny?`;
 
     bot.sendMessage(ADMIN_ID, orderText, {
@@ -101,46 +135,90 @@ app.post('/submit-order', async (req, res) => {
   }
 });
 
-// --- BOT ACTIONS ---
+app.post('/send-message', async (req, res) => {
+  try {
+    const { senderId, senderName, text } = req.body;
+    const msg = new Message({ senderId, senderName, receiverId: ADMIN_ID, text, direction: 'to_admin' });
+    await msg.save();
+    sendWithTyping(ADMIN_ID, `💬 *Message mula sa Customer:*\n👤 ${senderName}\n🆔 ${senderId}\n📝 ${text}`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// --- BOT COMMANDS & ACTIONS ---
+
+// /start command
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+  if (chatId == ADMIN_ID) {
+    bot.sendMessage(ADMIN_ID, `👋 Hello Admin!\nGamitin ang buttons para kontrolin ang shop:`, {
+      reply_markup: {
+        keyboard: [
+          [{ text: '🔄 Toggle Open/Close' }]
+        ],
+        resize_keyboard: true
+      }
+    });
+  } else {
+    sendWithTyping(chatId, `👋 Hi! Welcome sa aming shop. Magbukas lang ng Mini App para umorder o mag-message. 😊`);
+  }
+});
+
+// Toggle button pressed
+bot.onText(/🔄 Toggle Open\/Close/, async (msg) => {
+  if (msg.chat.id != ADMIN_ID) return;
+  const status = await ShopStatus.findOne();
+  status.isOpen = !status.isOpen;
+  await status.save();
+  sendWithTyping(ADMIN_ID, `🔄 Shop is now ${status.isOpen ? 'OPEN ✅' : 'CLOSED ❌'}`);
+});
+
+// Admin reply: /reply CUSTOMER_ID MESSAGE
+bot.onText(/\/reply (\d+) (.+)/, async (msg, match) => {
+  if (msg.chat.id != ADMIN_ID) return;
+  const customerId = match[1];
+  const replyText = match[2];
+
+  const msgSave = new Message({
+    senderId: ADMIN_ID,
+    senderName: 'Admin',
+    receiverId: customerId,
+    text: replyText,
+    direction: 'to_customer'
+  });
+  await msgSave.save();
+
+  sendWithTyping(customerId, `💬 *Reply mula sa Admin:*\n${replyText}`);
+  sendWithTyping(ADMIN_ID, '✅ Reply sent successfully!');
+});
+
+// Approve / Deny buttons
 bot.on('callback_query', async (query) => {
   const data = query.data;
   const orderId = data.split('_')[1];
-
   const order = await Order.findById(orderId);
   if (!order) return bot.answerCallbackQuery(query.id, { text: 'Order not found!' });
 
   if (data.startsWith('approve')) {
     order.status = 'approved';
     await order.save();
-
-    // Send to customer
-    bot.sendMessage(order.telegramId, `✅ *Approved na ang order mo!*\n\nSalamat sa pag-order! 🥰\nIto ang kailangan mong gawin:\n1. Gamitin ang QR code sa ibaba para sa bayad.\n2. Pindutin ang link para sa Lalamove at punan ang detalye ng delivery.`, { parse_mode: 'Markdown' });
-    
+    sendWithTyping(order.telegramId, `✅ *Approved na ang order mo!*\n\nSalamat sa pag-order! 🥰\n1. Gamitin ang QR code para sa bayad.\n2. Pindutin ang link para sa Lalamove.`, { parse_mode: 'Markdown' });
     bot.sendPhoto(order.telegramId, process.env.QR_CODE_URL);
-    bot.sendMessage(order.telegramId, `📦 *Lalamove Booking:*\n${process.env.LALAMOVE_LINK}`);
-
+    sendWithTyping(order.telegramId, `📦 *Lalamove Booking:*\n${process.env.LALAMOVE_LINK}`);
     bot.answerCallbackQuery(query.id, { text: 'Order Approved ✅' });
-    bot.editMessageText('✅ Order na-approve na at na-notify na ang customer.', { chat_id: query.message.chat.id, message_id: query.message.message_id });
-
+    bot.editMessageText('✅ Order approved & customer notified.', { chat_id: query.message.chat.id, message_id: query.message.message_id });
   } else if (data.startsWith('deny')) {
     order.status = 'denied';
     await order.save();
-
-    bot.sendMessage(order.telegramId, `❌ *Pasensya na, hindi natuloy ang order mo.*\nMay naging problema po, pwede kang umulit o magtanong sa amin. Salamat sa pag-intindi. 🙏`, { parse_mode: 'Markdown' });
-
+    sendWithTyping(order.telegramId, `❌ *Pasensya na, hindi natuloy ang order mo.*\nMay naging problema po — pwede kang umulit o magtanong. 🙏`, { parse_mode: 'Markdown' });
     bot.answerCallbackQuery(query.id, { text: 'Order Denied ❌' });
-    bot.editMessageText('❌ Order na-deny na at na-notify na ang customer.', { chat_id: query.message.chat.id, message_id: query.message_id });
+    bot.editMessageText('❌ Order denied & customer notified.', { chat_id: query.message.chat.id, message_id: query.message.message_id });
   }
 });
 
 // --- START SERVER ---
 app.listen(PORT, () => {
-  console.log(`🚀 Server running sa http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
-
-// --- TYPING INDICATOR HELPER ---
-async function sendWithTyping(chatId, text, options = {}) {
-  await bot.sendChatAction(chatId, 'typing');
-  await new Promise(resolve => setTimeout(resolve, 1000)); // simulate typing
-  return bot.sendMessage(chatId, text, options);
-}

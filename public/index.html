@@ -11,7 +11,16 @@
   <div class="container">
     <h1>🛒 Mag-order na Dito!</h1>
 
-    <div id="announcement" class="announcement-banner" style="display:none;"></div>
+    <!-- 🆕 UPDATES CAROUSEL FOR CUSTOMERS -->
+    <div class="carousel-section">
+      <h3>📢 Latest Updates / What's New / Sale</h3>
+      <div class="carousel-container">
+        <button class="carousel-arrow left" onclick="moveCarousel(-1)">&#10094;</button>
+        <div class="carousel-wrapper" id="customer-carousel"></div>
+        <button class="carousel-arrow right" onclick="moveCarousel(1)">&#10095;</button>
+      </div>
+    </div>
+
     <div id="shop-status" class="status-banner"></div>
 
     <div class="tabs">
@@ -19,7 +28,6 @@
       <button class="tab-btn" data-tab="flavored">Flavored</button>
       <button class="tab-btn" data-tab="thee">The E</button>
       <button class="tab-btn" data-tab="addons">Add Ons</button>
-      <!-- ❌ NO MESSAGE ADMIN TAB ANYMORE -->
     </div>
 
     <div id="signatures" class="tab-content active"></div>

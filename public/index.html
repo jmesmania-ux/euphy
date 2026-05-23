@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🛒 Mag-order na Dito!</h1>
+
+    <!-- Menu Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="signatures">Signatures</button>
+      <button class="tab-btn" data-tab="flavored">Flavored</button>
+      <button class="tab-btn" data-tab="thee">The E</button>
+      <button class="tab-btn" data-tab="addons">Add Ons</button>
+    </div>
+
+    <!-- Product Lists -->
+    <div id="signatures" class="tab-content active"></div>
+    <div id="flavored" class="tab-content"></div>
+    <div id="thee" class="tab-content"></div>
+    <div id="addons" class="tab-content"></div>
+
+    <!-- Cart -->
+    <div class="cart">
+      <h3>🧾 Iyong Order</h3>
+      <div id="cart-items"></div>
+      <p class="total">Kabuuan: ₱<span id="total-amount">0</span></p>
+      <button id="submit-order" class="submit-btn">Ipadala ang Order</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

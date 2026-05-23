@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🛠️ Admin Dashboard</h1>
+      <div class="shop-status">
+        <span id="status-text"></span>
+        <button id="toggle-shop-btn">Toggle Open/Close</button>
+      </div>
+    </header>
+
+    <!-- 🔐 Login -->
+    <div id="login-screen" class="screen active">
+      <h2>Enter Admin Password</h2>
+      <input type="password" id="admin-pass" placeholder="Password...">
+      <button id="login-btn">Login</button>
+    </div>
+
+    <!-- 📊 Main Dashboard -->
+    <div id="main-screen" class="screen">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="orders">📦 Orders</button>
+        <button class="tab-btn" data-tab="products">🧃 Products</button>
+        <button class="tab-btn" data-tab="updates">📢 Updates</button>
+      </div>
+
+      <!-- 📦 Orders Tab -->
+      <div id="orders" class="tab-content active">
+        <div id="orders-list"></div>
+      </div>
+
+      <!-- 🧃 Products Tab -->
+      <div id="products" class="tab-content">
+        <div class="add-product-form">
+          <h3>Add New Product</h3>
+          <input type="text" id="p-id" placeholder="ID">
+          <input type="text" id="p-name" placeholder="Name">
+          <input type="text" id="p-desc" placeholder="Description">
+          <input type="number" id="p-price" placeholder="Price">
+          <select id="p-cat">
+            <option>Signatures</option>
+            <option>Flavored</option>
+            <option>TheE</option>
+            <option>AddOns-Essentials</option>
+            <option>AddOns-Miscellaneous</option>
+            <option>AddOns-Pops</option>
+          </select>
+          <button id="add-product-btn">Add Product</button>
+        </div>
+        <div id="products-list"></div>
+      </div>
+
+      <!-- 📢 Updates Tab -->
+      <div id="updates" class="tab-content">
+        <div class="post-update-form">
+          <h3>Post New Update / Announcement</h3>
+          <textarea id="update-text" placeholder="Type what's new..."></textarea>
+          <button id="post-update-btn">Post Update</button>
+        </div>
+        <div id="updates-list"></div>
+      </div>
+    </div>
+
+    <!-- 💬 Chat Modal -->
+    <div id="chat-modal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Chat with Customer <span id="chat-customer-id"></span></h3>
+        <div id="chat-messages" class="chat-box"></div>
+        <div class="chat-input">
+          <input type="text" id="chat-text" placeholder="Type reply...">
+          <button id="send-chat-btn">Send</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

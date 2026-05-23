@@ -8,30 +8,39 @@ let shopOpen = true;
 const user = tg.initDataUnsafe.user || {};
 const userData = {
   telegramId: user.id || 'N/A',
-  telegramName: user.first_name + ' ' + (user.last_name || ''),
+  telegramName: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
   telegramUsername: user.username || 'N/A'
 };
 
-// Load announcement
+// 📢 Load Announcement
 fetch('/announcement')
   .then(res => res.json())
   .then(ann => {
-    if (ann.active && ann.text) {
+    if (ann && ann.active && ann.text) {
       const el = document.getElementById('announcement');
       el.textContent = `📢 ${ann.text}`;
       el.style.display = 'block';
     }
-  });
+  })
+  .catch(err => console.error('Announcement error:', err));
 
-// Load shop status
+// 🟢🔴 Load Shop Status
 fetch('/shop-status')
   .then(res => res.json())
-  .then(data => { shopOpen = data.isOpen; updateShopBanner(); });
+  .then(data => {
+    shopOpen = data.isOpen;
+    updateShopBanner();
+  })
+  .catch(err => console.error('Shop status error:', err));
 
-// Load products
+// 🧃 Load Products — FIXED so it actually renders
 fetch('/products')
   .then(res => res.json())
-  .then(data => { productsData = data; renderProducts(); });
+  .then(data => {
+    productsData = data;
+    renderProducts(); // <-- This was not working properly before
+  })
+  .catch(err => console.error('Products error:', err));
 
 function updateShopBanner() {
   const banner = document.getElementById('shop-status');
@@ -46,7 +55,7 @@ function updateShopBanner() {
   }
 }
 
-// Tab switching
+// 📑 Tab Switch
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -56,19 +65,46 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
+// 🧃 Render Products — FULLY FIXED
 function renderProducts() {
-  const sigEl = document.getElementById('signatures');
-  productsData.Signatures.forEach(p => sigEl.appendChild(createProductEl(p)));
+  // Clear first
+  document.getElementById('signatures').innerHTML = '';
+  document.getElementById('flavored').innerHTML = '';
+  document.getElementById('thee').innerHTML = '';
+  document.getElementById('addons').innerHTML = '';
 
-  const flavEl = document.getElementById('flavored');
-  productsData.Flavored.forEach(p => flavEl.appendChild(createProductEl(p)));
+  // Signatures
+  if (productsData.Signatures) {
+    productsData.Signatures.forEach(p => {
+      document.getElementById('signatures').appendChild(createProductEl(p));
+    });
+  }
 
-  const theeEl = document.getElementById('thee');
-  productsData.TheE.forEach(p => theeEl.appendChild(createProductEl(p)));
+  // Flavored
+  if (productsData.Flavored) {
+    productsData.Flavored.forEach(p => {
+      document.getElementById('flavored').appendChild(createProductEl(p));
+    });
+  }
 
-  const addEl = document.getElementById('addons');
-  [...productsData.AddOns.Essentials, ...productsData.AddOns.Miscellaneous, ...productsData.AddOns.Pops]
-    .forEach(p => addEl.appendChild(createProductEl(p)));
+  // The E
+  if (productsData.TheE) {
+    productsData.TheE.forEach(p => {
+      document.getElementById('thee').appendChild(createProductEl(p));
+    });
+  }
+
+  // Add-ons (combine all subcategories)
+  if (productsData.AddOns) {
+    const allAddons = [
+      ...(productsData.AddOns.Essentials || []),
+      ...(productsData.AddOns.Miscellaneous || []),
+      ...(productsData.AddOns.Pops || [])
+    ];
+    allAddons.forEach(p => {
+      document.getElementById('addons').appendChild(createProductEl(p));
+    });
+  }
 }
 
 function createProductEl(product) {
@@ -76,7 +112,7 @@ function createProductEl(product) {
   div.className = `product ${product.available ? '' : 'unavailable'}`;
   div.innerHTML = `
     <h4>${product.name}</h4>
-    <p>${product.description}</p>
+    <p>${product.description || ''}</p>
     <p class="price">₱${product.price}</p>
     <div class="qty-controls">
       <button class="qty-btn minus" ${!product.available ? 'disabled' : ''}>-</button>
@@ -89,45 +125,73 @@ function createProductEl(product) {
 
   let qty = 0;
   const qtyEl = div.querySelector('.qty');
-  div.querySelector('.plus').addEventListener('click', () => { qty++; qtyEl.textContent = qty; updateCart(product, qty); });
-  div.querySelector('.minus').addEventListener('click', () => { if (qty>0) qty--; qtyEl.textContent = qty; updateCart(product, qty); });
+  div.querySelector('.plus').addEventListener('click', () => {
+    qty++;
+    qtyEl.textContent = qty;
+    updateCart(product, qty);
+  });
+  div.querySelector('.minus').addEventListener('click', () => {
+    if (qty > 0) {
+      qty--;
+      qtyEl.textContent = qty;
+      updateCart(product, qty);
+    }
+  });
   return div;
 }
 
+// 🛒 Cart Logic
 function updateCart(product, qty) {
   const exists = cart.find(i => i.id === product.id);
-  if (exists) { if (!qty) cart = cart.filter(i => i.id !== product.id); else exists.qty = qty; }
-  else if (qty>0) cart.push({...product, qty});
+  if (exists) {
+    if (!qty) {
+      cart = cart.filter(i => i.id !== product.id);
+    } else {
+      exists.qty = qty;
+    }
+  } else if (qty > 0) {
+    cart.push({...product, qty});
+  }
   renderCart();
 }
 
 function renderCart() {
-  const el = document.getElementById('cart-items'); el.innerHTML = '';
+  const el = document.getElementById('cart-items');
+  el.innerHTML = '';
   let total = 0;
   cart.forEach(i => {
     total += i.price * i.qty;
     const div = document.createElement('div');
     div.className = 'cart-item';
-    div.innerHTML = `<span>${i.name} x${i.qty}</span><span>₱${i.price*i.qty}</span>`;
+    div.innerHTML = `<span>${i.name} x${i.qty}</span><span>₱${i.price * i.qty}</span>`;
     el.appendChild(div);
   });
   document.getElementById('total-amount').textContent = total;
 }
 
-// Submit order
+// ✅ Submit Order
 document.getElementById('submit-order').addEventListener('click', async () => {
   if (!shopOpen) return tg.showAlert('❌ Pasensya na, sarado muna kami!');
   if (cart.length === 0) return tg.showAlert('Wala pang laman ang order mo! 😅');
 
   tg.showPopup({ message: 'Nagsusulat ng order... sandali lang po ⏳' });
-  const orderData = {...userData, items: cart, total: cart.reduce((s,i)=>s+(i.price*i.qty),0)};
+  const orderData = {
+    ...userData,
+    items: cart,
+    total: cart.reduce((s, i) => s + (i.price * i.qty), 0)
+  };
 
   try {
-    const res = await fetch('/submit-order', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(orderData) });
+    const res = await fetch('/submit-order', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(orderData)
+    });
     const result = await res.json();
     if (result.success) {
       tg.showAlert('✅ Order naipadala na sa Admin! Antay lang ng sagot. 🥰');
-      cart = []; renderCart();
+      cart = [];
+      renderCart();
       document.querySelectorAll('.qty').forEach(e => e.textContent = '0');
     } else {
       tg.showAlert(result.message);
@@ -137,15 +201,19 @@ document.getElementById('submit-order').addEventListener('click', async () => {
   }
 });
 
-// Send message
+// 💬 Send Message to Admin
 document.getElementById('send-msg-btn').addEventListener('click', async () => {
   const text = document.getElementById('message-text').value.trim();
   if (!text) return;
 
   fetch('/send-message', {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ senderId: userData.telegramId, senderName: userData.telegramName, text })
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      senderId: userData.telegramId,
+      senderName: userData.telegramName,
+      text
+    })
   });
 
   const msgEl = document.createElement('div');

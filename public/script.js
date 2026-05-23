@@ -4,6 +4,8 @@ tg.ready();
 let productsData = {};
 let cart = [];
 let shopOpen = true;
+let carouselPosition = 0;
+const itemWidth = 285; // Width of one carousel item + gap
 
 const user = tg.initDataUnsafe.user || {};
 const userData = {
@@ -12,17 +14,53 @@ const userData = {
   telegramUsername: user.username || 'N/A'
 };
 
-// Load Announcement
+// 🆕 LOAD UPDATES CAROUSEL
+function loadUpdates() {
+  fetch('/announcement')
+    .then(r => r.json())
+    .then(updates => {
+      const wrapper = document.getElementById('customer-carousel');
+      wrapper.innerHTML = '';
+      carouselPosition = 0; // Reset position
+
+      // Show all updates (you can set limit if you want)
+      updates.forEach(u => {
+        const div = document.createElement('div');
+        div.className = 'carousel-item';
+        div.innerHTML = `
+          ${u.imageUrl ? `<img src="${u.imageUrl}" alt="Update">` : ''}
+          <div class="carousel-item-text">
+            <p>${u.text}</p>
+          </div>
+        `;
+        wrapper.appendChild(div);
+      });
+    });
+}
+
+// Carousel Navigation
+function moveCarousel(direction) {
+  const wrapper = document.getElementById('customer-carousel');
+  const maxPosition = -(wrapper.children.length - 1) * itemWidth;
+  
+  carouselPosition += direction * itemWidth;
+  
+  // Keep within limits
+  if (carouselPosition > 0) carouselPosition = 0;
+  if (carouselPosition < maxPosition) carouselPosition = maxPosition;
+  
+  wrapper.style.transform = `translateX(${carouselPosition}px)`;
+}
+
+// Load Announcement + Shop Status + Products
 fetch('/announcement')
   .then(r => r.json())
-  .then(a => { if (a?.active && a.text) { document.getElementById('announcement').textContent = `📢 ${a.text}`; document.getElementById('announcement').style.display='block'; } });
+  .then(() => loadUpdates()); // 🆕 Load carousel here
 
-// Load Shop Status
 fetch('/shop-status')
   .then(r => r.json())
   .then(d => { shopOpen = d.isOpen; updateShopBanner(); });
 
-// Load Products
 fetch('/products')
   .then(r => r.json())
   .then(d => { productsData = d; renderProducts(); });
@@ -40,7 +78,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-btn,.tab-content').forEach(e => e.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-  }
+  };
 });
 
 // Render Products
